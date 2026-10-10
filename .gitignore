@@ -1,0 +1,40 @@
+# Maven / Java
+backend/target/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+!.mvn/wrapper/maven-wrapper.jar
+
+# Node / Frontend
+frontend/node_modules/
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+.vite/
+*.local
+
+# Secrets & Local Configuration
+.env
+.env.local
+.env.*.local
+!.env.example
+application-secret.properties
+application-secret.yml
+
+# IDE / Editor Files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+/.metadata/
+
+# Eclipse IDE files
+.classpath
+.project
+.settings/
