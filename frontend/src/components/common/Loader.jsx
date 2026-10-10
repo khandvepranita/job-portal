@@ -6,19 +6,19 @@ export const Loader = ({ message = 'Loading...' }) => (
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '3rem',
-    color: '#94a3b8'
+    padding: '3.5rem 1rem',
+    color: 'var(--text-muted)'
   }}>
     <div style={{
-      width: '40px',
-      height: '40px',
-      border: '4px solid #334155',
-      borderTop: '4px solid #6366f1',
+      width: '36px',
+      height: '36px',
+      border: '3px solid #E2E8F0',
+      borderTop: '3px solid #2563EB',
       borderRadius: '50%',
-      animation: 'spin 1s linear infinite',
-      marginBottom: '1rem'
+      animation: 'spin 0.8s linear infinite',
+      marginBottom: '0.85rem'
     }}></div>
-    <span>{message}</span>
+    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{message}</span>
     <style>{`
       @keyframes spin {
         0% { transform: rotate(0deg); }

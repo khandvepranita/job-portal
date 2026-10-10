@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from '../features/auth/Login';
 import { Register } from '../features/auth/Register';
 import { JobList } from '../features/jobs/JobList';
+import { CandidateProfile } from '../features/profile/CandidateProfile';
 import { AdminDashboard } from '../features/dashboard/AdminDashboard';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -13,6 +14,7 @@ export const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/jobs" element={<JobList />} />
+      <Route path="/profile" element={<CandidateProfile />} />
 
       {/* Protected RBAC Routes */}
       <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN']} />}>

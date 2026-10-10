@@ -14,40 +14,24 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         disabled={currentPage === 0}
         onClick={() => onPageChange(currentPage - 1)}
-        className="btn-pagination"
+        className="btn btn-secondary"
+        style={{ height: '36px', padding: '0 0.85rem', fontSize: '0.875rem' }}
       >
         Previous
       </button>
 
-      <span style={{ color: '#94a3b8', margin: '0 0.5rem' }}>
-        Page {currentPage + 1} of {totalPages}
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0.75rem' }}>
+        Page <strong>{currentPage + 1}</strong> of <strong>{totalPages}</strong>
       </span>
 
       <button
         disabled={currentPage >= totalPages - 1}
         onClick={() => onPageChange(currentPage + 1)}
-        className="btn-pagination"
+        className="btn btn-secondary"
+        style={{ height: '36px', padding: '0 0.85rem', fontSize: '0.875rem' }}
       >
         Next
       </button>
-
-      <style>{`
-        .btn-pagination {
-          background: #1e293b;
-          border: 1px solid #334155;
-          color: #f8fafc;
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-        .btn-pagination:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-        .btn-pagination:hover:not(:disabled) {
-          border-color: #6366f1;
-        }
-      `}</style>
     </div>
   );
 };
