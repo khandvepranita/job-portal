@@ -6,24 +6,45 @@ export const AdminDashboard = () => {
 
   return (
     <div className="container">
-      <h2 style={{ marginBottom: '1rem' }}>⚡ Admin Security Dashboard</h2>
-      <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Role-Based Access Control (RBAC) Management System</p>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary-navy)', marginBottom: '0.35rem' }}>
+          System Administration & Security
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+          Overview of active role-based access controls, security policies, and system status
+        </p>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' }}>
-          <h4 style={{ color: '#06b6d4', marginBottom: '0.5rem' }}>Logged User Principal</h4>
-          <p><strong>Name:</strong> {user?.name}</p>
-          <p><strong>Email:</strong> {user?.email}</p>
-          <p><strong>Assigned Role:</strong> <span className="badge">{user?.role}</span></p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1.75rem', boxShadow: 'var(--shadow-subtle)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-navy)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            Active Principal Session
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.925rem' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>User Name</span>
+              <strong>{user?.name || 'Administrator'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</span>
+              <strong>{user?.email || 'admin@jobportal.com'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assigned Security Role</span>
+              <span className="badge badge-success" style={{ marginTop: '0.2rem' }}>{user?.role || 'ROLE_ADMIN'}</span>
+            </div>
+          </div>
         </div>
 
-        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' }}>
-          <h4 style={{ color: '#10b981', marginBottom: '0.5rem' }}>Security Policies Active</h4>
-          <ul style={{ color: '#94a3b8', paddingLeft: '1.2rem', lineHeight: '1.8' }}>
-            <li>JWT HttpOnly Cookie Token Storage</li>
-            <li>Method Security (@PreAuthorize)</li>
-            <li>JPA Auditing (createdAt, createdBy)</li>
-            <li>Soft Delete (status = INACTIVE)</li>
+        <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1.75rem', boxShadow: 'var(--shadow-subtle)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-navy)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            Enforced Security Policies
+          </h3>
+          <ul style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.8', listStyleType: 'square', paddingLeft: '1.25rem' }}>
+            <li><strong style={{ color: 'var(--text-main)' }}>JWT HttpOnly Cookies:</strong> Token storage secured against XSS attacks</li>
+            <li><strong style={{ color: 'var(--text-main)' }}>Method Security:</strong> Spring Security `@PreAuthorize` enabled on write/delete APIs</li>
+            <li><strong style={{ color: 'var(--text-main)' }}>JPA Auditing:</strong> Automated tracking of entity creation and modification times</li>
+            <li><strong style={{ color: 'var(--text-main)' }}>Soft Deletion:</strong> Database records flag `status = INACTIVE` for data retention</li>
           </ul>
         </div>
       </div>

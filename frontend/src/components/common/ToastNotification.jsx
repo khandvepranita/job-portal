@@ -11,10 +11,10 @@ export const ToastNotification = ({ message, type = 'info', onClose }) => {
   if (!message) return null;
 
   const bgColors = {
-    success: '#10b981',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6',
+    success: '#059669',
+    error: '#DC2626',
+    warning: '#D97706',
+    info: '#2563EB',
   };
 
   return (
@@ -23,20 +23,21 @@ export const ToastNotification = ({ message, type = 'info', onClose }) => {
       bottom: '24px',
       right: '24px',
       backgroundColor: bgColors[type] || bgColors.info,
-      color: '#fff',
-      padding: '0.85rem 1.5rem',
+      color: '#FFFFFF',
+      padding: '0.75rem 1.25rem',
       borderRadius: '8px',
-      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
       fontWeight: '500',
+      fontSize: '0.9rem',
       zIndex: 1000,
       display: 'flex',
       alignItems: 'center',
-      gap: '12px'
+      gap: '10px'
     }}>
       <span>{message}</span>
       <button
         onClick={onClose}
-        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+        style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}
       >
         ✕
       </button>

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ToastNotification } from '../../components/common/ToastNotification';
@@ -7,92 +7,265 @@ export const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('USER');
+  const [agreedTerms, setAgreedTerms] = useState(true);
   const [toast, setToast] = useState(null);
   const { register, loading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreedTerms) {
+      setToast({ message: 'Please agree to the Terms of Service to continue.', type: 'error' });
+      return;
+    }
     try {
       await register({ name, email, password, role });
-      setToast({ message: 'Registration successful! Please sign in.', type: 'success' });
-      setTimeout(() => navigate('/login'), 1500);
+      setToast({ message: 'Account created successfully! Redirecting to sign in...', type: 'success' });
+      setTimeout(() => navigate('/login'), 1000);
     } catch (err) {
       setToast({
-        message: err.response?.data?.message || 'Registration failed.',
+        message: err.response?.data?.message || 'Registration failed. Please try again.',
         type: 'error'
       });
     }
   };
 
+  const roleOptions = [
+    {
+      id: 'USER',
+      title: 'Job Seeker',
+      desc: 'Explore roles, apply & track applications'
+    },
+    {
+      id: 'MANAGER',
+      title: 'Hiring Manager',
+      desc: 'Post openings & recruit top talent'
+    },
+    {
+      id: 'EMPLOYEE',
+      title: 'Employee',
+      desc: 'Internal career development & referral'
+    },
+    {
+      id: 'ADMIN',
+      title: 'Administrator',
+      desc: 'Full portal control & governance'
+    }
+  ];
+
   return (
-    <div style={{ maxWidth: '400px', margin: '3rem auto', padding: '2rem', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-      <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Create Account</h2>
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', color: '#94a3b8' }}>Full Name</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
-            placeholder="John Doe"
-          />
+    <div className="login-page-wrapper">
+      {/* Left Visual Panel (~46% Desktop Width) */}
+      <div className="login-visual-panel">
+        <div className="login-brand-header">
+          <div className="login-brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </div>
+          <span>CareerConnect</span>
         </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', color: '#94a3b8' }}>Email Address</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
-            placeholder="john@example.com"
-          />
+        <div className="login-visual-content">
+          <h1 className="login-visual-headline">
+            Start Your Journey <br /> & Accelerate Growth
+          </h1>
+          <p className="login-visual-subtitle">
+            Join thousands of verified candidates and leading enterprise teams building the future of hiring today.
+          </p>
+
+          {/* Glassmorphism Stat Cards Grid */}
+          <div className="stat-cards-grid">
+            <div className="stat-glass-card">
+              <div className="stat-number">50K+</div>
+              <div className="stat-label">Active Users</div>
+              <div className="stat-subtext">Verified Profiles</div>
+            </div>
+            <div className="stat-glass-card">
+              <div className="stat-number">4.9/5</div>
+              <div className="stat-label">Platform Rating</div>
+              <div className="stat-subtext">10K+ Client Reviews</div>
+            </div>
+          </div>
+
+          <div className="trust-badge-card">
+            <span className="trust-badge-text">Instant profile activation & encrypted candidate data</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
         </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', color: '#94a3b8' }}>Password</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
-            placeholder="••••••••"
-          />
+        <div className="login-visual-footer">
+          <span>© 2026 CareerConnect Platform. Enterprise Security Enabled.</span>
         </div>
+      </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.4rem', color: '#94a3b8' }}>Select Role (RBAC)</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
-          >
-            <option value="USER">User (Job Seeker)</option>
-            <option value="EMPLOYEE">Employee</option>
-            <option value="MANAGER">Manager</option>
-            <option value="ADMIN">Admin</option>
-          </select>
+      {/* Right Register Form Area */}
+      <div className="login-form-area">
+        <div className="login-form-card" style={{ maxWidth: '480px' }}>
+          <div className="login-form-header">
+            <span className="login-welcome-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              GET STARTED TODAY
+            </span>
+            <h2 className="login-form-title">Create Your Account</h2>
+            <p className="login-form-subtitle">Fill in your information to join CareerConnect.</p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {/* Full Name Field */}
+            <div className="input-group">
+              <label className="input-label">Full Name *</label>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input
+                  type="text"
+                  className="form-control input-has-icon"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Alex Morgan"
+                />
+              </div>
+            </div>
+
+            {/* Email Address Field */}
+            <div className="input-group">
+              <label className="input-label">Email Address *</label>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <input
+                  type="email"
+                  className="form-control input-has-icon"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="alex@company.com"
+                />
+              </div>
+            </div>
+
+            {/* Password Field with Eye Toggle */}
+            <div className="input-group">
+              <label className="input-label">Password *</label>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="form-control input-has-icon input-has-toggle"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Account Role Card Selector */}
+            <div className="input-group">
+              <label className="input-label">Select Account Role *</label>
+              <div className="role-cards-grid">
+                {roleOptions.map((opt) => {
+                  const isActive = role === opt.id;
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`role-card ${isActive ? 'active' : ''}`}
+                      onClick={() => setRole(opt.id)}
+                    >
+                      <div className="role-card-header">
+                        <span className="role-card-title">{opt.title}</span>
+                        <div className="role-check-badge">
+                          {isActive && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <span className="role-card-desc">{opt.desc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Terms Agreement Checkbox */}
+            <div style={{ marginTop: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                id="terms"
+                checked={agreedTerms}
+                onChange={(e) => setAgreedTerms(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
+              />
+              <label htmlFor="terms" style={{ fontSize: '0.825rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                I agree to the <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Terms of Service</span> & <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Privacy Policy</span>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button type="submit" disabled={loading} className="btn btn-primary login-submit-btn">
+              {loading ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="spinner-sm"></span> Creating Account...
+                </span>
+              ) : (
+                'Create Account'
+              )}
+            </button>
+          </form>
+
+          {/* Footer Navigation Links */}
+          <div className="login-footer-links">
+            <p>
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">Sign in</Link>
+            </p>
+            <div style={{ marginTop: '0.75rem' }}>
+              <Link to="/" className="back-home-link">
+                ← Back to Homepage
+              </Link>
+            </div>
+          </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ marginTop: '1rem', padding: '0.75rem', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
-        >
-          {loading ? 'Creating account...' : 'Register'}
-        </button>
-      </form>
-
-      <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-        Already have an account? <Link to="/login" style={{ color: '#6366f1' }}>Sign in</Link>
-      </p>
+      </div>
 
       {toast && <ToastNotification message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

@@ -10,8 +10,8 @@ export const Modal = ({ isOpen, title, onClose, children }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-      backdropFilter: 'blur(4px)',
+      backgroundColor: 'rgba(15, 23, 42, 0.4)',
+      backdropFilter: 'blur(2px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -19,27 +19,28 @@ export const Modal = ({ isOpen, title, onClose, children }) => {
       padding: '1rem'
     }}>
       <div style={{
-        backgroundColor: '#1e293b',
-        border: '1px solid #334155',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E8F0',
         borderRadius: '12px',
-        maxWidth: '550px',
+        maxWidth: '560px',
         width: '100%',
         padding: '1.75rem',
-        color: '#f8fafc',
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)'
+        color: '#1E293B',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid #334155',
+          borderBottom: '1px solid #E2E8F0',
           paddingBottom: '1rem',
           marginBottom: '1.25rem'
         }}>
-          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{title}</h3>
+          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#173B57' }}>{title}</h3>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.25rem', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '1.25rem', cursor: 'pointer', padding: '0.2rem' }}
+            title="Close"
           >
             ✕
           </button>
