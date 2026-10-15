@@ -24,54 +24,6 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-[data-theme="dark"] {
-  --primary-navy: #1E293B;
-  --dark-navy: #0F172A;
-  --accent-blue: #3B82F6;
-  --accent-blue-hover: #60A5FA;
-  --bg-main: #0B0F19;
-  --bg-card: #111827;
-  --text-main: #F3F4F6;
-  --text-muted: #9CA3AF;
-  --border-color: #1F2937;
-  --border-hover: #374151;
-  --border-focus: #3B82F6;
-  --success-bg: rgba(5, 150, 105, 0.15);
-  --success-text: #34D399;
-  --danger-bg: rgba(220, 38, 38, 0.15);
-  --danger-text: #F87171;
-  --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="dark"] .auth-card,
-[data-theme="dark"] .job-card,
-[data-theme="dark"] .modal-card,
-[data-theme="dark"] .profile-card,
-[data-theme="dark"] .form-control {
-  background-color: #111827 !important;
-  color: #F3F4F6 !important;
-  border-color: #1F2937 !important;
-}
-
-[data-theme="dark"] .form-control::placeholder {
-  color: #6B7280 !important;
-}
-
-[data-theme="dark"] .input-label {
-  color: #E5E7EB !important;
-}
-
-[data-theme="dark"] .role-card {
-  background-color: #111827 !important;
-  border-color: #1F2937 !important;
-}
-
-[data-theme="dark"] .role-card.active {
-  border-color: #3B82F6 !important;
-  background-color: #1E293B !important;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -935,17 +887,8 @@ body {
   align-items: center;
 }
 
-[data-theme="dark"] .hero-search-form {
-  background-color: #1E293B;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-}
-
 .hero-search-location-col {
   border-left: 1px solid #E2E8F0;
-}
-
-[data-theme="dark"] .hero-search-location-col {
-  border-left-color: #334155;
 }
 
 /* Job Portal Main Layout - Desktop */
@@ -1090,10 +1033,6 @@ body {
     border-left: none !important;
     border-top: 1px solid #E2E8F0 !important;
     padding-top: 0.4rem !important;
-  }
-
-  [data-theme="dark"] .hero-search-location-col {
-    border-top-color: #334155 !important;
   }
 
   .hero-input {
