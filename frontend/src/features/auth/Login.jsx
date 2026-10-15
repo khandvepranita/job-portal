@@ -37,7 +37,7 @@ export const Login = () => {
     try {
       await login({ email: email.trim(), password });
       setToast({ message: 'Authentication successful. Redirecting...', type: 'success' });
-      setTimeout(() => navigate('/jobs'), 800);
+      setTimeout(() => navigate('/dashboard'), 800);
     } catch (err) {
       if (err.response?.data && typeof err.response.data === 'object' && !err.response.data.message) {
         setErrors(err.response.data);

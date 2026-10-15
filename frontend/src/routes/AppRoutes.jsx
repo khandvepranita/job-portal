@@ -8,6 +8,7 @@ import { CandidateProfile } from '../features/profile/CandidateProfile';
 import { MyApplications } from '../features/applications/MyApplications';
 import { RecruiterApplications } from '../features/recruiter/RecruiterApplications';
 import { AdminDashboard } from '../features/dashboard/AdminDashboard';
+import { Dashboard } from '../features/dashboard/Dashboard';
 import { ForgotPassword } from '../features/auth/ForgotPassword';
 import { ResetPassword } from '../features/auth/ResetPassword';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -25,6 +26,11 @@ export const AppRoutes = () => {
       <Route path="/profile" element={<CandidateProfile />} />
       <Route path="/applications" element={<MyApplications />} />
 
+      {/* Role-Based Unified Dashboard: Candidate, Hiring Manager, or Admin */}
+      <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_CANDIDATE', 'ROLE_USER']} />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Route>
+
       {/* Recruiter ATS: Accessible to ADMIN and MANAGER */}
       <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_MANAGER']} />}>
         <Route path="/recruiter/applications" element={<RecruiterApplications />} />
@@ -32,7 +38,7 @@ export const AppRoutes = () => {
 
       {/* Admin Dashboard: Accessible to ADMIN */}
       <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN']} />}>
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<Dashboard />} />
       </Route>
 
       <Route path="/unauthorized" element={

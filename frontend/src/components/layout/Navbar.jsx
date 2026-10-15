@@ -86,7 +86,13 @@ export const Navbar = () => {
 
           {/* Desktop Navigation (Hidden on mobile screens <= 768px via CSS) */}
           <div className="navbar-nav-desktop">
-            <Link to="/jobs" className={`nav-link ${isActive('/jobs') || isActive('/') ? 'active' : ''}`}>
+            {user && (
+              <Link to="/dashboard" className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`} style={{ fontWeight: 700, color: '#2563EB' }}>
+                Dashboard
+              </Link>
+            )}
+
+            <Link to="/jobs" className={`nav-link ${isActive('/jobs') || (!user && isActive('/')) ? 'active' : ''}`}>
               Find Jobs
             </Link>
 
@@ -274,6 +280,29 @@ export const Navbar = () => {
                         Role: {user.role ? user.role.replace('ROLE_', '') : 'CANDIDATE'}
                       </div>
                     </div>
+
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.65rem 1rem',
+                        fontSize: '0.875rem',
+                        color: '#2563EB',
+                        fontWeight: 700,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                      </svg>
+                      Role Dashboard
+                    </Link>
 
                     <Link
                       to="/profile"
@@ -519,10 +548,27 @@ export const Navbar = () => {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {user && (
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`mobile-nav-link ${isActive('/dashboard') ? 'active' : ''}`}
+                style={{ fontWeight: 700, color: '#2563EB' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                My Dashboard
+              </Link>
+            )}
+
             <Link
               to="/jobs"
               onClick={() => setMobileMenuOpen(false)}
-              className={`mobile-nav-link ${isActive('/jobs') || isActive('/') ? 'active' : ''}`}
+              className={`mobile-nav-link ${isActive('/jobs') || (!user && isActive('/')) ? 'active' : ''}`}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
