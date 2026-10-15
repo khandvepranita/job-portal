@@ -38,7 +38,7 @@ public class JwtTokenProvider {
         String jwt = generateTokenFromUsername(userPrincipal.getUsername());
         return ResponseCookie.from(jwtCookieName, jwt)
                 .path("/api")
-                .maxAge(15 * 60)
+                .maxAge((long) jwtExpirationMs / 1000)
                 .httpOnly(true)
                 .sameSite("Lax")
                 .build();

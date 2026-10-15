@@ -1,4 +1,4 @@
-﻿-- Enterprise Job Portal Database Schema (MySQL)
+-- Enterprise Job Portal Database Schema (MySQL)
 CREATE DATABASE IF NOT EXISTS jobportal_db;
 USE jobportal_db;
 
@@ -47,11 +47,89 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 4. Candidate Profiles Table (Resume & Skills)
+CREATE TABLE IF NOT EXISTS candidate_profiles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE,
+    headline VARCHAR(200),
+    phone VARCHAR(50),
+    location VARCHAR(150),
+    experience_years VARCHAR(50),
+    current_company VARCHAR(150),
+    summary TEXT,
+    skills TEXT,
+    experiences LONGTEXT,
+    education LONGTEXT,
+    resume_file_name VARCHAR(255),
+    resume_file_path VARCHAR(500),
+    profile_completion INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) DEFAULT 'SYSTEM',
+    updated_by VARCHAR(100) DEFAULT 'SYSTEM',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_profile_user (user_id)
+);
+
+-- 5. Job Applications Table (ATS Pipeline)
+CREATE TABLE IF NOT EXISTS job_applications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    job_id BIGINT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'APPLIED', -- APPLIED, UNDER_REVIEW, SHORTLISTED, INTERVIEW, ACCEPTED, REJECTED
+    cover_letter TEXT,
+    resume_file_name VARCHAR(255),
+    resume_file_path VARCHAR(500),
+    match_score INT,
+    match_reason TEXT,
+    recruiter_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) DEFAULT 'SYSTEM',
+    updated_by VARCHAR(100) DEFAULT 'SYSTEM',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_job (user_id, job_id),
+    INDEX idx_app_user (user_id),
+    INDEX idx_app_job (job_id),
+    INDEX idx_app_status (status)
+);
+
+-- 6. Saved Jobs Table
+CREATE TABLE IF NOT EXISTS saved_jobs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    job_id BIGINT NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_saved_user_job (user_id, job_id),
+    INDEX idx_saved_user (user_id)
+);
+
+-- 7. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'APPLICATION_UPDATE',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) DEFAULT 'SYSTEM',
+    updated_by VARCHAR(100) DEFAULT 'SYSTEM',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_notif_user (user_id),
+    INDEX idx_notif_read (is_read)
+);
+
 -- Sample Seed Data
 INSERT INTO users (name, email, password, role, status, created_by) VALUES
 ('System Admin', 'admin@jobportal.com', '$2a$10$e0MYzXyjpJS7Pd0RVvHwHe1D.L693aGZl.6tB.s82t/XG7d3c0p.y', 'ROLE_ADMIN', 'ACTIVE', 'SEED'),
 ('Hiring Manager', 'manager@jobportal.com', '$2a$10$e0MYzXyjpJS7Pd0RVvHwHe1D.L693aGZl.6tB.s82t/XG7d3c0p.y', 'ROLE_MANAGER', 'ACTIVE', 'SEED'),
-('Regular Applicant', 'user@jobportal.com', '$2a$10$e0MYzXyjpJS7Pd0RVvHwHe1D.L693aGZl.6tB.s82t/XG7d3c0p.y', 'ROLE_USER', 'ACTIVE', 'SEED');
+('Alex Morgan', 'user@jobportal.com', '$2a$10$e0MYzXyjpJS7Pd0RVvHwHe1D.L693aGZl.6tB.s82t/XG7d3c0p.y', 'ROLE_USER', 'ACTIVE', 'SEED')
+ON DUPLICATE KEY UPDATE name=name;
 
 INSERT INTO jobs (title, company, location, type, description, salary, status, created_by) VALUES
 ('Senior Java 21 & Spring Boot Developer', 'TechCorp Solutions', 'Remote', 'Full-time', 'Join our backend engineering team building scalable RESTful microservices with Spring Boot, Spring Data JPA, and MySQL.', '$110,000 - $140,000', 'ACTIVE', 'admin@jobportal.com'),

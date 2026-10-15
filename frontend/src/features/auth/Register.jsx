@@ -7,28 +7,68 @@ export const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('USER');
   const [agreedTerms, setAgreedTerms] = useState(true);
+  const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
   const { register, loading } = useAuth();
   const navigate = useNavigate();
 
+  const validate = () => {
+    const errs = {};
+    if (!name.trim()) {
+      errs.name = 'Full name is required.';
+    } else if (name.trim().length < 2) {
+      errs.name = 'Full name must be at least 2 characters.';
+    }
+
+    if (!email.trim()) {
+      errs.email = 'Email address is required.';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        errs.email = 'Please enter a valid email address (e.g. name@company.com).';
+      }
+    }
+
+    if (!password) {
+      errs.password = 'Password is required.';
+    } else if (password.length < 6) {
+      errs.password = 'Password must be at least 6 characters.';
+    }
+
+    if (!confirmPassword) {
+      errs.confirmPassword = 'Confirmation password is required.';
+    } else if (password !== confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match.';
+    }
+
+    if (!agreedTerms) {
+      errs.terms = 'Please accept the Terms of Service to proceed.';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!agreedTerms) {
-      setToast({ message: 'Please agree to the Terms of Service to continue.', type: 'error' });
-      return;
-    }
+    if (!validate()) return;
+
     try {
-      await register({ name, email, password, role });
+      await register({ name: name.trim(), email: email.trim(), password, role });
       setToast({ message: 'Account created successfully! Redirecting to sign in...', type: 'success' });
       setTimeout(() => navigate('/login'), 1000);
     } catch (err) {
-      setToast({
-        message: err.response?.data?.message || 'Registration failed. Please try again.',
-        type: 'error'
-      });
+      if (err.response?.data && typeof err.response.data === 'object' && !err.response.data.message) {
+        setErrors(err.response.data);
+      }
+      const msg = err.response?.data?.message || 
+                  (err.response?.data && typeof err.response.data === 'object' ? Object.values(err.response.data)[0] : null) || 
+                  'Registration failed. Please try again.';
+      setToast({ message: msg, type: 'error' });
     }
   };
 
@@ -121,7 +161,7 @@ export const Register = () => {
             <p className="login-form-subtitle">Fill in your information to join CareerConnect.</p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* Full Name Field */}
             <div className="input-group">
               <label className="input-label">Full Name *</label>
@@ -132,13 +172,17 @@ export const Register = () => {
                 </svg>
                 <input
                   type="text"
-                  className="form-control input-has-icon"
-                  required
+                  className={`form-control input-has-icon ${errors.name ? 'input-error' : ''}`}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); setErrors(prev => ({ ...prev, name: '' })); }}
                   placeholder="e.g. Alex Morgan"
                 />
               </div>
+              {errors.name && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.name}
+                </span>
+              )}
             </div>
 
             {/* Email Address Field */}
@@ -151,13 +195,17 @@ export const Register = () => {
                 </svg>
                 <input
                   type="email"
-                  className="form-control input-has-icon"
-                  required
+                  className={`form-control input-has-icon ${errors.email ? 'input-error' : ''}`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
                   placeholder="alex@company.com"
                 />
               </div>
+              {errors.email && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.email}
+                </span>
+              )}
             </div>
 
             {/* Password Field with Eye Toggle */}
@@ -170,10 +218,9 @@ export const Register = () => {
                 </svg>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="form-control input-has-icon input-has-toggle"
-                  required
+                  className={`form-control input-has-icon input-has-toggle ${errors.password ? 'input-error' : ''}`}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
                   placeholder="Minimum 6 characters"
                 />
                 <button
@@ -195,6 +242,33 @@ export const Register = () => {
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.password}
+                </span>
+              )}
+            </div>
+
+            {/* Confirm Password Field */}
+            <div className="input-group">
+              <label className="input-label">Confirm Password *</label>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className={`form-control input-has-icon ${errors.confirmPassword ? 'input-error' : ''}`}
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+                  placeholder="Re-enter your password"
+                />
+              </div>
+              {errors.confirmPassword && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.confirmPassword}
+                </span>
+              )}
             </div>
 
             {/* Account Role Card Selector */}
@@ -227,17 +301,24 @@ export const Register = () => {
             </div>
 
             {/* Terms Agreement Checkbox */}
-            <div style={{ marginTop: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input
-                type="checkbox"
-                id="terms"
-                checked={agreedTerms}
-                onChange={(e) => setAgreedTerms(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
-              />
-              <label htmlFor="terms" style={{ fontSize: '0.825rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                I agree to the <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Terms of Service</span> & <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Privacy Policy</span>
-              </label>
+            <div style={{ marginTop: '0.75rem', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={agreedTerms}
+                  onChange={(e) => { setAgreedTerms(e.target.checked); setErrors(prev => ({ ...prev, terms: '' })); }}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
+                />
+                <label htmlFor="terms" style={{ fontSize: '0.825rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  I agree to the <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Terms of Service</span> & <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Privacy Policy</span>
+                </label>
+              </div>
+              {errors.terms && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.terms}
+                </span>
+              )}
             </div>
 
             {/* Submit Button */}

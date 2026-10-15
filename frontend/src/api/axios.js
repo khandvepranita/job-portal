@@ -20,4 +20,18 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor to detect session expiry (401)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const isAuthCall = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+      if (!isAuthCall) {
+        console.warn('Authentication session expired (401).');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

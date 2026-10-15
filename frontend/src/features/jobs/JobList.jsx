@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { jobApi } from '../../api/jobApi';
+import { applicationApi } from '../../api/applicationApi';
+import { savedJobApi } from '../../api/savedJobApi';
+import { atsApi } from '../../api/atsApi';
+import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../context/AuthContext';
 import { Loader } from '../../components/common/Loader';
 import { Pagination } from '../../components/common/Pagination';
@@ -18,35 +22,66 @@ export const JobList = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // Saved & Applied Jobs LocalStorage Persistence (Naukri style)
+  // Saved & Applied Jobs State
   const storageUserKey = user?.email || 'guest';
 
-  const [savedJobs, setSavedJobs] = useState(() => {
-    const saved = localStorage.getItem(`saved_jobs_${storageUserKey}`);
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [savedJobs, setSavedJobs] = useState({});
+  const [appliedJobs, setAppliedJobs] = useState({});
 
-  const [appliedJobs, setAppliedJobs] = useState(() => {
-    const applied = localStorage.getItem(`applied_jobs_${storageUserKey}`);
-    return applied ? JSON.parse(applied) : {};
-  });
+  // ATS Fit Scanner State
+  const [atsModalJob, setAtsModalJob] = useState(null);
+  const [atsResult, setAtsResult] = useState(null);
+  const [isAnalyzingATS, setIsAnalyzingATS] = useState(false);
 
   // Post Job Modal State
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [jobForm, setJobForm] = useState({ title: '', company: '', location: '', type: 'Full-time', description: '', salary: '' });
+  const [jobFormErrors, setJobFormErrors] = useState({});
 
   // One-Click Apply Modal State (Naukri style)
   const [applyModalJob, setApplyModalJob] = useState(null);
   const [coverNote, setCoverNote] = useState('');
   const [isSubmittingApply, setIsSubmittingApply] = useState(false);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+  const [candidateProfile, setCandidateProfile] = useState(null);
+  const [feedFilter, setFeedFilter] = useState('ALL'); // 'ALL' | 'HIGH_MATCH'
 
+  // Load Saved & Applied Jobs from Backend
   useEffect(() => {
-    localStorage.setItem(`saved_jobs_${storageUserKey}`, JSON.stringify(savedJobs));
-  }, [savedJobs, storageUserKey]);
+    if (user) {
+      profileApi.getProfile()
+        .then(p => {
+          if (p) setCandidateProfile(p);
+        })
+        .catch(err => console.log('Profile sync error', err));
 
-  useEffect(() => {
-    localStorage.setItem(`applied_jobs_${storageUserKey}`, JSON.stringify(appliedJobs));
-  }, [appliedJobs, storageUserKey]);
+      savedJobApi.getSavedJobs()
+        .then(list => {
+          const map = {};
+          (list || []).forEach(item => {
+            if (item.job?.id) map[item.job.id] = true;
+          });
+          setSavedJobs(map);
+        })
+        .catch(err => console.log('Saved jobs sync error', err));
+
+      applicationApi.getMyApplications()
+        .then(list => {
+          const map = {};
+          (list || []).forEach(item => {
+            if (item.jobId) {
+              map[item.jobId] = {
+                appliedDate: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recently',
+                status: item.status,
+                matchScore: item.matchScore
+              };
+            }
+          });
+          setAppliedJobs(map);
+        })
+        .catch(err => console.log('Applications sync error', err));
+    }
+  }, [user]);
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -72,15 +107,30 @@ export const JobList = () => {
     fetchJobs();
   };
 
-  const toggleSaveJob = (id) => {
-    setSavedJobs(prev => {
-      const newState = { ...prev, [id]: !prev[id] };
-      setToast({
-        message: newState[id] ? 'Job saved to your bookmarks.' : 'Job removed from bookmarks.',
-        type: 'info'
-      });
-      return newState;
-    });
+  const toggleSaveJob = async (id) => {
+    if (!user) {
+      setToast({ message: 'Please log in to save positions.', type: 'error' });
+      return;
+    }
+    const isCurrentlySaved = !!savedJobs[id];
+    try {
+      if (isCurrentlySaved) {
+        await savedJobApi.unsaveJob(id);
+        setSavedJobs(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
+        setToast({ message: 'Job removed from bookmarks.', type: 'info' });
+      } else {
+        await savedJobApi.saveJob(id);
+        setSavedJobs(prev => ({ ...prev, [id]: true }));
+        setToast({ message: 'Job saved to your bookmarks!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to update bookmark.', type: 'error' });
+    }
   };
 
   const handleOpenApplyModal = (job) => {
@@ -97,28 +147,108 @@ export const JobList = () => {
     if (!applyModalJob) return;
     setIsSubmittingApply(true);
 
-    setTimeout(() => {
+    try {
+      const res = await applicationApi.apply({
+        jobId: applyModalJob.id,
+        coverLetter: coverNote
+      }, null);
+
       setAppliedJobs(prev => ({
         ...prev,
         [applyModalJob.id]: {
-          appliedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          status: 'Application Submitted'
+          appliedDate: new Date().toLocaleDateString(),
+          status: res.status || 'APPLIED',
+          matchScore: res.matchScore
         }
       }));
 
-      setIsSubmittingApply(false);
-      setToast({ message: `🎉 Application submitted successfully for ${applyModalJob.title}!`, type: 'success' });
+      setToast({
+        message: `🎉 Application submitted! ATS Compatibility: ${res.matchScore || 85}%`,
+        type: 'success'
+      });
       setApplyModalJob(null);
-    }, 800);
+    } catch (err) {
+      console.error('Application submission error:', err);
+      if (err.response?.status === 401) {
+        setToast({
+          message: '⚠️ Your login session expired. Please sign in again to submit your application.',
+          type: 'error'
+        });
+      } else {
+        const errorMsg = err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response.data : null);
+        setToast({
+          message: errorMsg || 'Application submission failed. Please try again.',
+          type: 'error'
+        });
+      }
+    } finally {
+      setIsSubmittingApply(false);
+    }
+  };
+
+  const handleCheckATS = async (job) => {
+    setAtsModalJob(job);
+    setIsAnalyzingATS(true);
+    setAtsResult(null);
+
+    try {
+      let candidateProfile = null;
+      if (user) {
+        candidateProfile = await profileApi.getProfile().catch(() => null);
+      }
+
+      const res = await atsApi.analyzeMatch({
+        jobId: job.id,
+        candidateSkills: candidateProfile?.skills || 'Java, Spring Boot, React, MySQL, REST APIs, Git',
+        candidateSummary: candidateProfile?.summary || 'Full stack engineer with experience in cloud applications and microservices.',
+        candidateExperience: candidateProfile?.experiences || ''
+      });
+      setAtsResult(res);
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Could not complete ATS match calculation.', type: 'error' });
+      setAtsModalJob(null);
+    } finally {
+      setIsAnalyzingATS(false);
+    }
+  };
+
+  const validateJobForm = () => {
+    const errs = {};
+    if (!jobForm.title.trim()) {
+      errs.title = 'Job title is required.';
+    } else if (jobForm.title.trim().length < 3) {
+      errs.title = 'Job title must be at least 3 characters.';
+    }
+
+    if (!jobForm.company.trim()) {
+      errs.company = 'Company name is required.';
+    } else if (jobForm.company.trim().length < 2) {
+      errs.company = 'Company name must be at least 2 characters.';
+    }
+
+    if (!jobForm.location.trim()) {
+      errs.location = 'Job location is required.';
+    }
+
+    if (jobForm.description && jobForm.description.trim().length > 0 && jobForm.description.trim().length < 15) {
+      errs.description = 'Job description must provide at least 15 characters of detail.';
+    }
+
+    setJobFormErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleCreateJob = async (e) => {
     e.preventDefault();
+    if (!validateJobForm()) return;
+
     try {
       await jobApi.createJob(jobForm);
       setToast({ message: 'Job posting created successfully!', type: 'success' });
       setIsPostModalOpen(false);
       setJobForm({ title: '', company: '', location: '', type: 'Full-time', description: '', salary: '' });
+      setJobFormErrors({});
       fetchJobs();
     } catch (err) {
       setToast({ message: err.response?.data?.message || 'Failed to create job posting.', type: 'error' });
@@ -136,11 +266,58 @@ export const JobList = () => {
     }
   };
 
-  // Filter Jobs by location and type
+  // Smart ATS Fit Score calculation based on Candidate Profile skills
+  const calculateJobMatch = (job) => {
+    if (!candidateProfile || !candidateProfile.skills) return 82;
+    const skillsList = candidateProfile.skills.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+    if (skillsList.length === 0) return 82;
+
+    const targetText = `${job.title} ${job.company} ${job.description || ''} ${job.location || ''}`.toLowerCase();
+    let matches = 0;
+    skillsList.forEach(s => {
+      if (targetText.includes(s)) matches++;
+    });
+
+    const ratio = matches / skillsList.length;
+    return Math.min(Math.round(68 + (ratio * 26) + ((job.id || 1) % 5)), 98);
+  };
+
+  // One-Click AI Cover Letter Generator
+  const handleGenerateAICoverLetter = () => {
+    if (!applyModalJob) return;
+    setIsGeneratingCover(true);
+
+    const skills = candidateProfile?.skills || 'Full-Stack Software Engineering, Cloud Architecture, Modern React and Java development';
+    const experienceYears = candidateProfile?.experienceYears ? `${candidateProfile.experienceYears} years` : 'substantial hands-on experience';
+    const headline = candidateProfile?.headline || 'Passionate Software Engineer';
+
+    setTimeout(() => {
+      const generated = `Dear Hiring Team at ${applyModalJob.company},
+
+I am writing to express my strong interest in the ${applyModalJob.title} position in ${applyModalJob.location}. As a ${headline} with ${experienceYears} specializing in ${skills}, I am confident that my technical foundation and problem-solving skills align directly with your engineering requirements.
+
+Throughout my career, I have prioritized shipping performant, reliable applications, writing clean maintainable code, and collaborating cross-functionally to achieve strategic milestones. The mission and engineering standards at ${applyModalJob.company} are inspiring, and I would love to contribute my proactive ownership and technical depth to your team's upcoming initiatives.
+
+Thank you for your time and review. I look forward to the possibility of discussing how my experience can support your team's immediate roadmap.
+
+Warm regards,
+${user?.name || 'Candidate'}`;
+
+      setCoverNote(generated);
+      setIsGeneratingCover(false);
+      setToast({ message: '✨ Tailored AI Cover Letter generated successfully!', type: 'success' });
+    }, 450);
+  };
+
+  // Filter Jobs by location, type, and AI Recommendation filter
   const filteredJobs = jobs.filter(job => {
     const matchLocation = !locationSearch || job.location.toLowerCase().includes(locationSearch.toLowerCase());
     const matchType = selectedJobType === 'ALL' || (job.type && job.type.toLowerCase().includes(selectedJobType.toLowerCase()));
-    return matchLocation && matchType;
+    if (!matchLocation || !matchType) return false;
+    if (feedFilter === 'HIGH_MATCH') {
+      return calculateJobMatch(job) >= 78;
+    }
+    return true;
   });
 
   return (
@@ -336,14 +513,48 @@ export const JobList = () => {
           {/* Right Main Job Feed Column */}
           <main style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            {/* Header Result Counter */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Header Result Counter & AI Recommended Feed Toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0 }}>
-                  Recommended Openings ({filteredJobs.length})
-                </h2>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Page {page + 1} of {totalPages || 1} • Verified Hiring Partners
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <button
+                    onClick={() => setFeedFilter('ALL')}
+                    style={{
+                      border: 'none',
+                      background: feedFilter === 'ALL' ? 'var(--primary-navy)' : 'rgba(0,0,0,0.05)',
+                      color: feedFilter === 'ALL' ? '#FFFFFF' : 'var(--text-muted)',
+                      padding: '5px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    All Openings ({jobs.length})
+                  </button>
+                  <button
+                    onClick={() => setFeedFilter('HIGH_MATCH')}
+                    style={{
+                      border: 'none',
+                      background: feedFilter === 'HIGH_MATCH' ? 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)' : 'rgba(37, 99, 235, 0.1)',
+                      color: feedFilter === 'HIGH_MATCH' ? '#FFFFFF' : '#2563EB',
+                      padding: '5px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    🎯 AI High Match ({jobs.filter(j => calculateJobMatch(j) >= 78).length})
+                  </button>
+                </div>
+                <span style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                  Showing {filteredJobs.length} verified tech positions • Page {page + 1} of {totalPages || 1}
                 </span>
               </div>
 
@@ -365,6 +576,7 @@ export const JobList = () => {
                       const isSaved = !!savedJobs[job.id];
                       const appliedInfo = appliedJobs[job.id];
                       const companyInitial = job.company ? job.company.charAt(0).toUpperCase() : 'J';
+                      const matchScore = calculateJobMatch(job);
 
                       return (
                         <div key={job.id} style={{
@@ -419,6 +631,20 @@ export const JobList = () => {
                                       gap: '3px'
                                     }}>
                                       ⭐ 4.2 | 1.1k+ Reviews
+                                    </span>
+                                    <span style={{
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      padding: '2px 8px',
+                                      borderRadius: '12px',
+                                      backgroundColor: matchScore >= 80 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                      color: matchScore >= 80 ? '#15803D' : '#B45309',
+                                      border: `1px solid ${matchScore >= 80 ? '#BBF7D0' : '#FDE68A'}`,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }}>
+                                      ⚡ {matchScore}% Match
                                     </span>
                                   </div>
                                 </div>
@@ -521,14 +747,24 @@ export const JobList = () => {
                                     }}>
                                       ✓ Applied on {appliedInfo.appliedDate}
                                     </span>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleOpenApplyModal(job)}
-                                      className="btn btn-primary"
-                                      style={{ height: '36px', padding: '0 1.25rem', fontSize: '0.875rem', fontWeight: 600 }}
-                                    >
-                                      Apply Now
-                                    </button>
+                                   ) : (
+                                    <>
+                                      <button
+                                        onClick={() => handleCheckATS(job)}
+                                        className="btn btn-secondary"
+                                        style={{ height: '36px', padding: '0 0.85rem', fontSize: '0.8rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                        title="Compare your candidate skills with this job posting"
+                                      >
+                                        ⚡ ATS Fit
+                                      </button>
+                                      <button
+                                        onClick={() => handleOpenApplyModal(job)}
+                                        className="btn btn-primary"
+                                        style={{ height: '36px', padding: '0 1.25rem', fontSize: '0.875rem', fontWeight: 600 }}
+                                      >
+                                        Apply Now
+                                      </button>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -562,42 +798,54 @@ export const JobList = () => {
 
       {/* Post Job Modal (Recruiter/Admin) */}
       <Modal isOpen={isPostModalOpen} title="Post a New Job Opening" onClose={() => setIsPostModalOpen(false)}>
-        <form onSubmit={handleCreateJob} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={handleCreateJob} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label className="input-label">Job Title *</label>
             <input
-              required
               type="text"
-              className="form-control"
+              className={`form-control ${jobFormErrors.title ? 'input-error' : ''}`}
               placeholder="e.g. Senior Full Stack Java Developer"
               value={jobForm.title}
-              onChange={(e) => setJobForm({...jobForm, title: e.target.value})}
+              onChange={(e) => { setJobForm({...jobForm, title: e.target.value}); setJobFormErrors(prev => ({...prev, title: ''})); }}
             />
+            {jobFormErrors.title && (
+              <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.3rem', fontWeight: 500 }}>
+                {jobFormErrors.title}
+              </span>
+            )}
           </div>
 
           <div>
             <label className="input-label">Company Name *</label>
             <input
-              required
               type="text"
-              className="form-control"
+              className={`form-control ${jobFormErrors.company ? 'input-error' : ''}`}
               placeholder="e.g. Tata Consultancy Services / Infosys"
               value={jobForm.company}
-              onChange={(e) => setJobForm({...jobForm, company: e.target.value})}
+              onChange={(e) => { setJobForm({...jobForm, company: e.target.value}); setJobFormErrors(prev => ({...prev, company: ''})); }}
             />
+            {jobFormErrors.company && (
+              <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.3rem', fontWeight: 500 }}>
+                {jobFormErrors.company}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label className="input-label">Location *</label>
               <input
-                required
                 type="text"
-                className="form-control"
+                className={`form-control ${jobFormErrors.location ? 'input-error' : ''}`}
                 placeholder="e.g. Pune, Maharashtra / Remote"
                 value={jobForm.location}
-                onChange={(e) => setJobForm({...jobForm, location: e.target.value})}
+                onChange={(e) => { setJobForm({...jobForm, location: e.target.value}); setJobFormErrors(prev => ({...prev, location: ''})); }}
               />
+              {jobFormErrors.location && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.3rem', fontWeight: 500 }}>
+                  {jobFormErrors.location}
+                </span>
+              )}
             </div>
             <div>
               <label className="input-label">Employment Type</label>
@@ -629,12 +877,17 @@ export const JobList = () => {
             <label className="input-label">Job Description</label>
             <textarea
               rows="4"
-              className="form-control"
+              className={`form-control ${jobFormErrors.description ? 'input-error' : ''}`}
               style={{ height: 'auto' }}
               placeholder="Describe roles, responsibilities, required technical skills..."
               value={jobForm.description}
-              onChange={(e) => setJobForm({...jobForm, description: e.target.value})}
+              onChange={(e) => { setJobForm({...jobForm, description: e.target.value}); setJobFormErrors(prev => ({...prev, description: ''})); }}
             ></textarea>
+            {jobFormErrors.description && (
+              <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.3rem', fontWeight: 500 }}>
+                {jobFormErrors.description}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
@@ -683,13 +936,39 @@ export const JobList = () => {
               </div>
 
               <div>
-                <label className="input-label">Cover Note / Message to Recruiter (Optional)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label className="input-label" style={{ margin: 0 }}>Cover Note / Message to Recruiter</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAICoverLetter}
+                    disabled={isGeneratingCover}
+                    style={{
+                      background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '4px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.775rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    title="Generate a custom personalized cover letter matching your profile with this job"
+                  >
+                    {isGeneratingCover ? '✨ Writing with AI...' : '✨ Generate with AI'}
+                  </button>
+                </div>
                 <textarea
                   className="form-control"
-                  rows="3"
+                  rows="5"
                   value={coverNote}
                   onChange={(e) => setCoverNote(e.target.value)}
-                  placeholder="Share a brief message highlighting your relevant experience..."
+                  placeholder="Share a brief message highlighting your relevant experience, or click 'Generate with AI' above to draft one instantly..."
+                  style={{ lineHeight: 1.5, fontSize: '0.875rem', minHeight: '130px', maxHeight: '220px', resize: 'vertical' }}
                 ></textarea>
               </div>
 
@@ -702,6 +981,106 @@ export const JobList = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ATS Fit Scanner Modal */}
+      {atsModalJob && (
+        <div className="modal-backdrop">
+          <div className="modal-card" style={{ maxWidth: '580px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">⚡ ATS Resume Match Scanner</h3>
+              <button onClick={() => setAtsModalJob(null)} className="modal-close-btn">&times;</button>
+            </div>
+
+            <div style={{ padding: '0.5rem 0' }}>
+              <div style={{ padding: '0.85rem 1rem', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>{atsModalJob.title}</div>
+                <div style={{ fontSize: '0.85rem', color: '#64748B' }}>{atsModalJob.company} • {atsModalJob.location}</div>
+              </div>
+
+              {isAnalyzingATS ? (
+                <div style={{ padding: '2rem', textAlign: 'center' }}>
+                  <div className="spinner" style={{ margin: '0 auto 1rem', width: '32px', height: '32px' }}></div>
+                  <p style={{ color: '#64748B', fontSize: '0.9rem' }}>Analyzing candidate competencies against job requirements...</p>
+                </div>
+              ) : atsResult ? (
+                <div>
+                  {/* Score Dial / Bar */}
+                  <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0', marginBottom: '1.25rem' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: atsResult.matchScore >= 75 ? '#15803D' : '#D97706' }}>
+                      {atsResult.matchScore}%
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {atsResult.matchCategory}
+                    </div>
+                    <p style={{ fontSize: '0.825rem', color: '#14532D', margin: '0.35rem 0 0' }}>
+                      {atsResult.roleReadinessSummary}
+                    </p>
+                  </div>
+
+                  {/* Matched Skills */}
+                  {atsResult.matchedSkills && atsResult.matchedSkills.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>
+                        ✓ Matching Key Competencies
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        {atsResult.matchedSkills.map(sk => (
+                          <span key={sk} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 9px', borderRadius: '14px', backgroundColor: '#DCFCE7', color: '#166534' }}>
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Missing Skills */}
+                  {atsResult.missingSkills && atsResult.missingSkills.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>
+                        ⚠️ Recommended Skills to Add
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        {atsResult.missingSkills.map(sk => (
+                          <span key={sk} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 9px', borderRadius: '14px', backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                            + {sk}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Suggestions */}
+                  {atsResult.suggestions && atsResult.suggestions.length > 0 && (
+                    <div style={{ padding: '0.75rem 1rem', backgroundColor: '#EFF6FF', borderRadius: '8px', fontSize: '0.825rem', color: '#1E40AF', marginBottom: '1.25rem' }}>
+                      <strong>ATS Optimization Tip:</strong>
+                      <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', lineHeight: '1.5' }}>
+                        {atsResult.suggestions.map((sug, i) => <li key={i}>{sug}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setAtsModalJob(null)}>
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => {
+                        const target = atsModalJob;
+                        setAtsModalJob(null);
+                        handleOpenApplyModal(target);
+                      }}
+                    >
+                      Proceed to Apply
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

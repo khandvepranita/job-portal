@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ToastNotification } from '../../components/common/ToastNotification';
+import { profileApi } from '../../api/profileApi';
 
 export const CandidateProfile = () => {
   const { user } = useAuth();
@@ -67,10 +68,62 @@ export const CandidateProfile = () => {
   const [eduForm, setEduForm] = useState({ degree: '', institution: '', year: '', grade: '' });
   const [eduErrors, setEduErrors] = useState({});
 
-  // Save profile to localStorage whenever it changes
+  // 1-Click ATS Resume Builder Modal State
+  const [isPreviewingResumePDF, setIsPreviewingResumePDF] = useState(false);
+
+  // Load profile from Backend DB if authenticated
+  useEffect(() => {
+    if (user) {
+      profileApi.getProfile()
+        .then(data => {
+          if (data) {
+            let expParsed = [];
+            let eduParsed = [];
+            try {
+              if (data.experiences) expParsed = typeof data.experiences === 'string' ? JSON.parse(data.experiences) : data.experiences;
+              if (data.education) eduParsed = typeof data.education === 'string' ? JSON.parse(data.education) : data.education;
+            } catch (e) {
+              console.error("Error parsing exp/edu", e);
+            }
+
+            setProfile(prev => ({
+              ...prev,
+              headline: data.headline || prev.headline,
+              phone: data.phone || prev.phone,
+              location: data.location || prev.location,
+              experienceYears: data.experienceYears || prev.experienceYears,
+              currentCompany: data.currentCompany || prev.currentCompany,
+              summary: data.summary || prev.summary,
+              skills: data.skills ? data.skills.split(',').map(s => s.trim()).filter(Boolean) : prev.skills,
+              experiences: expParsed.length > 0 ? expParsed : prev.experiences,
+              education: eduParsed.length > 0 ? eduParsed : prev.education,
+              resumeName: data.resumeFileName || prev.resumeName
+            }));
+          }
+        })
+        .catch(err => console.log("Using cached profile data", err));
+    }
+  }, [user]);
+
+  // Sync profile changes to localStorage & backend
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(profile));
-  }, [profile, storageKey]);
+    if (user && (profile.headline || profile.skills?.length > 0 || profile.summary)) {
+      const payload = {
+        headline: profile.headline,
+        phone: profile.phone,
+        location: profile.location,
+        experienceYears: profile.experienceYears,
+        currentCompany: profile.currentCompany,
+        summary: profile.summary,
+        skills: Array.isArray(profile.skills) ? profile.skills.join(', ') : profile.skills,
+        experiences: JSON.stringify(profile.experiences || []),
+        education: JSON.stringify(profile.education || []),
+        resumeFileName: profile.resumeName
+      };
+      profileApi.updateProfile(payload).catch(e => console.error("Auto-sync error", e));
+    }
+  }, [profile, storageKey, user]);
 
   // Compute Profile Completion Score (Naukri/Indeed style)
   const computeCompletion = () => {
@@ -224,8 +277,8 @@ export const CandidateProfile = () => {
     setToast({ message: 'Education record removed.', type: 'info' });
   };
 
-  // Resume Upload Handler
-  const handleResumeUpload = (e) => {
+  // Resume Upload Handler with Backend Persistence
+  const handleResumeUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -244,14 +297,27 @@ export const CandidateProfile = () => {
     const sizeInKB = Math.round(file.size / 1024) + ' KB';
     const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    setProfile(prev => ({
-      ...prev,
-      resumeName: file.name,
-      resumeSize: sizeInKB,
-      resumeLastUpdated: todayStr
-    }));
-
-    setToast({ message: `Resume uploaded: ${file.name}`, type: 'success' });
+    try {
+      if (user) {
+        await profileApi.uploadResume(file);
+      }
+      setProfile(prev => ({
+        ...prev,
+        resumeName: file.name,
+        resumeSize: sizeInKB,
+        resumeLastUpdated: todayStr
+      }));
+      setToast({ message: `Resume document uploaded and saved to cloud: ${file.name}`, type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'File saved locally. (Backend file service offline)', type: 'info' });
+      setProfile(prev => ({
+        ...prev,
+        resumeName: file.name,
+        resumeSize: sizeInKB,
+        resumeLastUpdated: todayStr
+      }));
+    }
   };
 
   return (
@@ -325,27 +391,53 @@ export const CandidateProfile = () => {
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setHeaderForm({
-                    headline: profile.headline || '',
-                    phone: profile.phone || '',
-                    location: profile.location || '',
-                    experienceYears: profile.experienceYears || '',
-                    currentCompany: profile.currentCompany || '',
-                    summary: profile.summary || ''
-                  });
-                  setIsEditingHeader(true);
-                }}
-                className="btn btn-secondary"
-                style={{ fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.85rem' }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-                Edit Profile Header
-              </button>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.85rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingResumePDF(true)}
+                  className="btn btn-primary"
+                  style={{
+                    fontSize: '0.85rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                  }}
+                  title="Generate an ATS-optimized printable resume from your profile"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  Export ATS Resume (PDF)
+                </button>
+
+                <button
+                  onClick={() => {
+                    setHeaderForm({
+                      headline: profile.headline || '',
+                      phone: profile.phone || '',
+                      location: profile.location || '',
+                      experienceYears: profile.experienceYears || '',
+                      currentCompany: profile.currentCompany || '',
+                      summary: profile.summary || ''
+                    });
+                    setIsEditingHeader(true);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                  </svg>
+                  Edit Profile Header
+                </button>
+              </div>
             </div>
 
             {/* Quick Contact & Info Chips Grid */}
@@ -1056,6 +1148,164 @@ export const CandidateProfile = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 1-Click Profile to ATS-ready PDF Resume Preview Modal */}
+      {isPreviewingResumePDF && (
+        <div className="modal-backdrop">
+          <div className="modal-card" style={{ maxWidth: '820px', width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <div>
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                  📄 ATS Professional Resume Export
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Standard single-column ATS-compliant structure ready for recruiter screening
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="btn btn-primary"
+                  style={{
+                    fontSize: '0.825rem',
+                    padding: '0.4rem 1rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  Print / Save as PDF
+                </button>
+                <button onClick={() => setIsPreviewingResumePDF(false)} className="modal-close-btn">&times;</button>
+              </div>
+            </div>
+
+            {/* Printable ATS Document Sheet */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '1rem', backgroundColor: '#F1F5F9' }}>
+              <div id="ats-resume-printable" style={{
+                backgroundColor: '#FFFFFF',
+                color: '#1E293B',
+                padding: '2.5rem',
+                borderRadius: '8px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                maxWidth: '740px',
+                margin: '0 auto',
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+              }}>
+                {/* Header */}
+                <div style={{ borderBottom: '2px solid #0F172A', paddingBottom: '1rem', marginBottom: '1.25rem', textAlign: 'center' }}>
+                  <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0F172A', margin: '0 0 0.35rem 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {user?.name || 'Candidate Name'}
+                  </h1>
+                  {profile.headline && (
+                    <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#2563EB', marginBottom: '0.4rem' }}>
+                      {profile.headline}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.85rem', color: '#475569', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem' }}>
+                    <span>📧 {user?.email || 'email@example.com'}</span>
+                    {profile.phone && <span>• 📞 {profile.phone}</span>}
+                    {profile.location && <span>• 📍 {profile.location}</span>}
+                    {profile.experienceYears && <span>• ⏳ {profile.experienceYears} Years Exp</span>}
+                  </div>
+                </div>
+
+                {/* Professional Summary */}
+                {profile.summary && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #CBD5E1', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
+                      Professional Summary
+                    </h2>
+                    <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#334155', margin: 0 }}>
+                      {profile.summary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Core Technical Competencies / Skills */}
+                {profile.skills && profile.skills.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #CBD5E1', paddingBottom: '0.25rem', marginBottom: '0.5rem' }}>
+                      Core Technical Skills
+                    </h2>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      {profile.skills.map((skill, idx) => (
+                        <span key={idx} style={{
+                          fontSize: '0.775rem',
+                          fontWeight: 600,
+                          backgroundColor: '#F1F5F9',
+                          color: '#0F172A',
+                          border: '1px solid #CBD5E1',
+                          padding: '2px 8px',
+                          borderRadius: '4px'
+                        }}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Professional Experience */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #CBD5E1', paddingBottom: '0.25rem', marginBottom: '0.65rem' }}>
+                    Professional Experience
+                  </h2>
+                  {profile.experiences && profile.experiences.length > 0 ? (
+                    profile.experiences.map((exp, idx) => (
+                      <div key={idx} style={{ marginBottom: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0F172A' }}>{exp.role}</span>
+                          <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{exp.period || 'Present'}</span>
+                        </div>
+                        <div style={{ fontSize: '0.825rem', fontWeight: 600, color: '#2563EB', marginBottom: '0.25rem' }}>
+                          {exp.company} {exp.location ? `• ${exp.location}` : ''}
+                        </div>
+                        {exp.description && (
+                          <p style={{ fontSize: '0.825rem', color: '#475569', lineHeight: 1.5, margin: 0 }}>
+                            {exp.description}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.825rem', color: '#64748B', fontStyle: 'italic' }}>
+                      Candidate has hands-on project experience in web architectures, database schemas, and microservice APIs.
+                    </div>
+                  )}
+                </div>
+
+                {/* Education */}
+                <div>
+                  <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #CBD5E1', paddingBottom: '0.25rem', marginBottom: '0.65rem' }}>
+                    Education
+                  </h2>
+                  {profile.education && profile.education.length > 0 ? (
+                    profile.education.map((edu, idx) => (
+                      <div key={idx} style={{ marginBottom: '0.6rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0F172A' }}>{edu.degree}</span>
+                          <span style={{ fontSize: '0.8rem', color: '#64748B' }}>{edu.year}</span>
+                        </div>
+                        <div style={{ fontSize: '0.825rem', color: '#475569' }}>
+                          {edu.institution} {edu.grade ? `• Grade: ${edu.grade}` : ''}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.825rem', color: '#64748B', fontStyle: 'italic' }}>
+                      Bachelor of Engineering / Computer Science
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,20 @@
-# ⚡ Job Portal Enterprise Architecture
-> Spring Boot Reactor + Vite React Enterprise Reference Architecture (RBAC: ADMIN, MANAGER, EMPLOYEE, USER | JWT HttpOnly)
+# ⚡ Enterprise Job Portal & Applicant Tracking System (ATS)
+> **Production Reference Architecture** | Spring Boot 3.3.4 (Java 21) + Vite React 18 (RBAC: ADMIN, MANAGER, USER | JWT HttpOnly | ATS Resume Matcher | Automated CI/CD)
+
+---
+
+## 🌟 Key Enterprise Capabilities
+
+- **⚡ AI ATS Match Engine:** Real-time semantic keyword extraction analyzing candidate competencies against job postings, generating a compatibility score (0–100%) and personalized skill gap recommendations.
+- **📋 End-to-End ATS Candidate Lifecycle:** 5-stage recruitment pipeline (`Applied` ➡️ `Under Review` ➡️ `Shortlisted` ➡️ `Interview` ➡️ `Offer Extended` / `Rejected`).
+- **👨‍💼 Recruiter Evaluation Portal:** Hiring Managers and Admins can evaluate candidate resumes, preview cover notes, leave internal interview notes, and transition candidate pipeline stages in one click.
+- **📄 Resume & Profile Persistence:** MySQL persistence for candidate headlines, experience, education, skills, and secure multipart PDF resume uploads.
+- **🔔 Live Notifications & Alerts:** In-app notification center tracking application submission confirmations, recruiter stage updates, and interview invitations.
+- **📊 Executive Analytics Dashboard:** Live platform KPIs (Total Jobs, Active Openings, Applications Received, Placement Rate) and visual ATS funnel conversion metrics.
+- **🔖 Saved Jobs Manager:** Candidate bookmarking manager to save, organize, and quickly apply to positions across sessions.
+- **🛡️ Enterprise Security:** Stateless JWT authentication stored in `HttpOnly` and `SameSite` cookies with refresh token rotation, BCrypt password hashing, and Spring Security method-level `@PreAuthorize` rules.
+- **🧪 Comprehensive Test Suite:** Automated unit test suite using **JUnit 5 + Mockito** covering job services, application lifecycle, and the ATS scoring engine.
+- **🚀 DevOps & CI/CD:** Multi-stage Docker containers with Docker Compose orchestration and automated GitHub Actions CI workflow.
 
 ---
 
@@ -7,26 +22,39 @@
 
 ```text
 job-portal/
+├── .github/workflows/ci.yml             # Automated CI/CD Pipeline (Maven + Vite + Docker)
 ├── backend/                             # Spring Boot 3.3.4 (Java 21) Maven Application
 │   ├── src/main/java/com/jobportal/backend/
 │   │   ├── config/                      # SecurityConfig, CorsConfig, AuditConfig, SwaggerConfig, DataSeeder
-│   │   ├── controller/                  # REST Controllers (AuthController, JobController)
-│   │   ├── service/                     # Service Layer & Impls (AuthService, JobService)
-│   │   ├── repository/                  # JPA Repositories (UserRepository, JobRepository, RefreshTokenRepository)
-│   │   ├── dto/                         # Request & Response DTOs
-│   │   ├── model/                       # JPA Entities with Audit & Soft Delete (User, Job, RefreshToken)
+│   │   ├── controller/                  # REST Controllers:
+│   │   │                                # - AuthController, JobController, ApplicationController,
+│   │   │                                # - ProfileController, SavedJobController, ATSController,
+│   │   │                                # - AnalyticsController, NotificationController
+│   │   ├── service/                     # Service Layer & Impls:
+│   │   │                                # - ApplicationService, CandidateProfileService, ATSScoringService,
+│   │   │                                # - SavedJobService, AnalyticsService, NotificationService, JobService
+│   │   ├── repository/                  # JPA Repositories (JobApplication, Profile, SavedJob, Notification, User, Job)
+│   │   ├── dto/                         # Request & Response DTOs (ATSAnalysis, DashboardStats, ApplicationResponse)
+│   │   ├── model/                       # Entities: User, Job, JobApplication, CandidateProfile, SavedJob, Notification
 │   │   ├── security/                    # JWT Filters, TokenProvider, UserDetailsServiceImpl
 │   │   └── exception/                   # GlobalExceptionHandler (@ControllerAdvice)
+│   ├── src/test/java/                   # Automated Unit Tests (JobServiceTest, ApplicationServiceTest, ATSScoringServiceTest)
 │   ├── pom.xml                          # Maven dependencies & plugins
 │   └── Dockerfile                       # Multi-stage Docker build
 │
 ├── frontend/                            # React.js + Vite Frontend
 │   ├── src/
-│   │   ├── api/                         # Axios client with withCredentials & Interceptors (Port 8081)
-│   │   ├── components/                  # Reusable UI (DataTable, Pagination, Modal, Loader, Toast)
+│   │   ├── api/                         # Axios REST clients (applicationApi, profileApi, savedJobApi, atsApi, analyticsApi)
+│   │   ├── components/                  # Reusable UI (Navbar with Bell, Loader, Pagination, Modal, Toast)
 │   │   ├── context/                     # AuthContext & RBAC state management
-│   │   ├── features/                    # Modular feature views (auth/, jobs/, dashboard/)
-│   │   ├── routes/                      # ProtectedRoute & AppRoutes
+│   │   ├── features/
+│   │   │   ├── auth/                    # Login & Register views
+│   │   │   ├── jobs/                    # JobList (with ATS Scanner & Apply) & SavedJobs
+│   │   │   ├── applications/            # MyApplications (with visual 5-stage progress tracker)
+│   │   │   ├── recruiter/               # RecruiterApplications (Candidate ATS screening & stage updates)
+│   │   │   ├── profile/                 # CandidateProfile (with DB sync & PDF resume upload)
+│   │   │   └── dashboard/               # AdminDashboard (with live KPIs & ATS Funnel analytics)
+│   │   ├── routes/                      # ProtectedRoute & AppRoutes (/jobs, /saved, /applications, /recruiter)
 │   │   └── App.jsx
 │   ├── package.json
 │   └── Dockerfile
@@ -35,7 +63,6 @@ job-portal/
 │   └── schema.sql                       # DB creation with Audit columns, Soft Delete & Seed data
 ├── .env.example                         # Environment variable template
 ├── docker-compose.yml                   # Docker orchestration (MySQL + Backend + Frontend)
-├── .gitignore                           # Excludes target/, node_modules/, secrets & .env
 └── README.md
 ```
 
@@ -43,79 +70,66 @@ job-portal/
 
 ## 🔐 Environment & Security Setup
 
-Before running the application or starting Docker Compose, copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
-```
-
-### 🔑 How to Generate a Unique Random JWT Secret
-
-Your `JWT_SECRET` must be a strong 256-bit (32-byte) key. You can generate one using any of the following commands:
-
-- **Linux / macOS / Git Bash:**
-  ```bash
-  openssl rand -base64 32
-  ```
-
-- **PowerShell (Windows):**
-  ```powershell
-  [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Min 0 -Max 256 }))
-  ```
-
----
-
-### ⚙️ Required Environment Variables
-
-| Variable | Description | Required in Docker Compose? |
-| :--- | :--- | :--- |
-| `DB_PASSWORD` | MySQL Database Password | **Required** (No silent fallback) |
-| `JWT_SECRET` | 256-bit Secret Key for JWT Tokens | **Required** (No silent fallback) |
-| `DB_USERNAME` | MySQL Username | Optional (Default: `root`) |
-| `DB_NAME` | MySQL Database Name | Optional (Default: `jobportal_db`) |
-| `VITE_API_BASE_URL` | Frontend REST API URL | Optional (Default: `http://localhost:8081/api`) |
-
-> [!IMPORTANT]
-> Both `DB_PASSWORD` and `JWT_SECRET` must be set in your `.env` file or environment when using Docker Compose. If either is missing, Docker Compose will halt with an explicit error.
-
----
-
-## 🚀 How to Run the Application
-
-### Option 1: Docker Compose (Strict Security Mode)
-1. Ensure `.env` is created and populated with `DB_PASSWORD` and `JWT_SECRET`:
+1. Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
-   # Edit .env to set your DB_PASSWORD and generated JWT_SECRET
    ```
-2. Start containers:
+
+2. Required variables:
+   | Variable | Description |
+   | :--- | :--- |
+   | `DB_PASSWORD` | MySQL root database password |
+   | `JWT_SECRET` | 256-bit Base64 secret key for token signing |
+   | `DB_NAME` | Database name (`jobportal_db`) |
+   | `VITE_API_BASE_URL` | Frontend REST endpoint (`http://localhost:8081/api`) |
+
+---
+
+## 🚀 Running the Project
+
+### Option 1: Running with Maven & Vite Locally
+
+1. **Database:**
+   Ensure MySQL is running on `3306` with schema loaded from `database/schema.sql`.
+
+2. **Backend Server (Spring Boot 3 + Java 21):**
    ```bash
-   docker-compose up --build
+   cd backend
+   .\mvnw.cmd spring-boot:run
    ```
+   *Runs at `http://localhost:8081` (Swagger docs at `http://localhost:8081/swagger-ui.html`)*
+
+3. **Run Backend Test Suite:**
+   ```bash
+   cd backend
+   .\mvnw.cmd test
+   ```
+
+4. **Frontend Server (Vite + React 18):**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   *UI runs at `http://localhost:5173/`*
+
+---
+
+### Option 2: Docker Compose Orchestration
+
+```bash
+docker-compose up --build
+```
 - **Frontend UI:** `http://localhost:5173`
 - **Backend API:** `http://localhost:8081`
 - **Swagger Docs:** `http://localhost:8081/swagger-ui.html`
 
 ---
 
-### Option 2: Running Locally with MySQL
+## 👤 Default Seed Accounts
 
-1. **Database Setup:**
-   Ensure MySQL is running on port `3306` and load the schema:
-   ```bash
-   mysql -u root -p < database/schema.sql
-   ```
-
-2. **Backend Server (Spring Boot):**
-   ```bash
-   cd backend
-   mvn spring-boot:run
-   ```
-
-3. **Frontend Server (Vite + React):**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-   *UI runs at `http://localhost:5173/`.*
+| Role | Email | Password | Access Privileges |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@jobportal.com` | `Admin@123` | Full administrative control, system metrics, job creation & candidate evaluation |
+| **Hiring Manager** | `manager@jobportal.com` | `Manager@123` | Recruiter ATS portal, candidate screening, stage promotion, and job posting |
+| **Candidate** | `user@jobportal.com` | `User@123` | Job browsing, ATS fit scanner, one-click application, saved jobs, and profile |

@@ -16,6 +16,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     Page<Job> findByStatus(Status status, Pageable pageable);
 
+    long countByStatus(Status status);
+
     Optional<Job> findByIdAndStatus(Long id, Status status);
 
     @Query("SELECT j FROM Job j WHERE j.status = :status AND " +

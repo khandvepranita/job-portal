@@ -7,21 +7,45 @@ export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
   const { login, loading } = useAuth();
   const navigate = useNavigate();
 
+  const validate = () => {
+    const errs = {};
+    if (!email.trim()) {
+      errs.email = 'Email address is required.';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        errs.email = 'Please enter a valid email address.';
+      }
+    }
+    if (!password) {
+      errs.password = 'Password is required.';
+    } else if (password.length < 6) {
+      errs.password = 'Password must be at least 6 characters.';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
     try {
-      await login({ email, password });
+      await login({ email: email.trim(), password });
       setToast({ message: 'Authentication successful. Redirecting...', type: 'success' });
       setTimeout(() => navigate('/jobs'), 800);
     } catch (err) {
-      setToast({
-        message: err.response?.data?.message || 'Invalid email or password. Please try again.',
-        type: 'error'
-      });
+      if (err.response?.data && typeof err.response.data === 'object' && !err.response.data.message) {
+        setErrors(err.response.data);
+      }
+      const msg = err.response?.data?.message || 
+                  (err.response?.data && typeof err.response.data === 'object' ? Object.values(err.response.data)[0] : null) || 
+                  'Invalid email or password. Please try again.';
+      setToast({ message: msg, type: 'error' });
     }
   };
 
@@ -89,7 +113,7 @@ export const Login = () => {
             <p className="login-form-subtitle">Welcome back! Enter your credentials to access your account.</p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* Email Field with Inline Icon */}
             <div className="input-group">
               <label className="input-label">Email Address</label>
@@ -100,18 +124,27 @@ export const Login = () => {
                 </svg>
                 <input
                   type="email"
-                  className="form-control input-has-icon"
-                  required
+                  className={`form-control input-has-icon ${errors.email ? 'input-error' : ''}`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
                   placeholder="name@company.com"
                 />
               </div>
+              {errors.email && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.email}
+                </span>
+              )}
             </div>
 
             {/* Password Field with Lock Icon & Toggle */}
             <div className="input-group">
-              <label className="input-label">Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <label className="input-label" style={{ marginBottom: 0 }}>Password</label>
+                <Link to="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>
+                  Forgot password?
+                </Link>
+              </div>
               <div className="input-with-icon">
                 <svg className="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -119,10 +152,9 @@ export const Login = () => {
                 </svg>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="form-control input-has-icon input-has-toggle"
-                  required
+                  className={`form-control input-has-icon input-has-toggle ${errors.password ? 'input-error' : ''}`}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
                   placeholder="••••••••"
                 />
                 <button
@@ -144,6 +176,11 @@ export const Login = () => {
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <span style={{ color: '#EF4444', fontSize: '0.8rem', display: 'block', marginTop: '0.35rem', fontWeight: 500 }}>
+                  {errors.password}
+                </span>
+              )}
             </div>
 
             {/* Action Submit */}
