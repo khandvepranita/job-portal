@@ -1,6 +1,14 @@
 # ⚡ Enterprise Job Portal & Applicant Tracking System (ATS)
 > **Production Reference Architecture** | Spring Boot 3.3.4 (Java 21) + Vite React 18 (RBAC: ADMIN, MANAGER, USER | JWT HttpOnly | ATS Resume Matcher | Automated CI/CD)
 
+![Java](https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot_3.3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
+![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite_5-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+
 ---
 
 ## 🌟 Key Enterprise Capabilities
