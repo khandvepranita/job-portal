@@ -45,6 +45,7 @@ export const JobList = () => {
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [feedFilter, setFeedFilter] = useState('ALL'); // 'ALL' | 'HIGH_MATCH'
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Load Saved & Applied Jobs from Backend
   useEffect(() => {
@@ -348,32 +349,23 @@ ${user?.name || 'Candidate'}`;
             🚀 50,000+ Verified Tech & Enterprise Jobs Live Now
           </span>
 
-          <h1 style={{ fontSize: '2.35rem', fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.02em', marginBottom: '0.75rem', color: '#FFFFFF' }}>
+          <h1 className="hero-headline" style={{ fontSize: '2.35rem', fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.02em', marginBottom: '0.75rem', color: '#FFFFFF' }}>
             Find Your Dream Role on India's Tech Career Portal
           </h1>
-          <p style={{ fontSize: '1.05rem', color: '#93C5FD', maxWidth: '650px', margin: '0 auto 2rem auto', lineHeight: 1.6 }}>
+          <p className="hero-subheadline" style={{ fontSize: '1.05rem', color: '#93C5FD', maxWidth: '650px', margin: '0 auto 2rem auto', lineHeight: 1.6 }}>
             Explore verified openings from top MNCs, unicorn startups, and hiring teams.
           </p>
 
-          {/* Naukri 3-Field Hero Search Bar */}
-          <form onSubmit={handleSearchSubmit} style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 'var(--radius-lg)',
-            padding: '0.6rem',
-            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.25)',
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) auto',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          {/* Naukri 3-Field Hero Search Bar - Responsive */}
+          <form onSubmit={handleSearchSubmit} className="hero-search-form">
+            <div className="hero-search-input-col" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <svg style={{ position: 'absolute', left: '14px', color: '#64748B' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
               <input
                 type="text"
-                className="form-control"
+                className="form-control hero-input"
                 style={{ paddingLeft: '2.6rem', border: 'none', background: 'transparent', boxShadow: 'none', height: '46px' }}
                 placeholder="Skills, Designation, Company (e.g. Java, React, Developer)"
                 value={search}
@@ -381,14 +373,14 @@ ${user?.name || 'Candidate'}`;
               />
             </div>
 
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', borderLeft: '1px solid #E2E8F0' }}>
+            <div className="hero-search-input-col hero-search-location-col" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <svg style={{ position: 'absolute', left: '14px', color: '#64748B' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                 <circle cx="12" cy="10" r="3"></circle>
               </svg>
               <input
                 type="text"
-                className="form-control"
+                className="form-control hero-input"
                 style={{ paddingLeft: '2.6rem', border: 'none', background: 'transparent', boxShadow: 'none', height: '46px' }}
                 placeholder="Location (e.g. Pune, Mumbai, Remote)"
                 value={locationSearch}
@@ -396,7 +388,7 @@ ${user?.name || 'Candidate'}`;
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ height: '46px', padding: '0 1.75rem', fontSize: '0.95rem', fontWeight: 700, borderRadius: 'var(--radius-md)' }}>
+            <button type="submit" className="btn btn-primary hero-search-btn" style={{ height: '46px', padding: '0 1.75rem', fontSize: '0.95rem', fontWeight: 700, borderRadius: 'var(--radius-md)' }}>
               Search Jobs
             </button>
           </form>
@@ -406,10 +398,25 @@ ${user?.name || 'Candidate'}`;
       {/* Main Container Layout: Left Filters Sidebar vs Right Job Cards */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.25rem' }}>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '270px minmax(0, 1fr)', gap: '1.5rem' }}>
+        {/* Mobile Filter Toggle Bar (Shows only on <= 900px) */}
+        <div className="mobile-filter-bar">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            className="btn btn-secondary"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '42px', fontSize: '0.9rem', fontWeight: 600, marginBottom: '1rem' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            {mobileFiltersOpen ? 'Hide Filters ✕' : 'Filter Openings (Work Mode / Experience) ⚙️'}
+          </button>
+        </div>
+
+        <div className={`job-portal-layout ${mobileFiltersOpen ? 'mobile-filters-expanded' : ''}`}>
 
           {/* Left Naukri Filter Sidebar */}
-          <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <aside className="job-filters-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
             <div style={{
               backgroundColor: '#FFFFFF',
@@ -717,17 +724,17 @@ ${user?.name || 'Candidate'}`;
                               </p>
 
                               {/* Footer Actions & Apply Button */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.775rem', color: '#94A3B8' }}>
+                              <div className="job-card-footer">
+                                <span className="job-card-meta" style={{ fontSize: '0.775rem', color: '#94A3B8' }}>
                                   Posted 2 days ago • 150+ Applicants
                                 </span>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <div className="job-card-actions">
                                   {isAdmin && (
                                     <button
                                       onClick={() => handleDeleteJob(job.id)}
                                       className="btn btn-outline-danger"
-                                      style={{ height: '34px', padding: '0 0.75rem', fontSize: '0.825rem' }}
+                                      style={{ height: '36px', padding: '0 0.75rem', fontSize: '0.825rem' }}
                                     >
                                       Delete
                                     </button>
@@ -747,11 +754,11 @@ ${user?.name || 'Candidate'}`;
                                     }}>
                                       ✓ Applied on {appliedInfo.appliedDate}
                                     </span>
-                                   ) : (
+                                  ) : (
                                     <>
                                       <button
                                         onClick={() => handleCheckATS(job)}
-                                        className="btn btn-secondary"
+                                        className="btn btn-secondary job-action-btn"
                                         style={{ height: '36px', padding: '0 0.85rem', fontSize: '0.8rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                                         title="Compare your candidate skills with this job posting"
                                       >
@@ -759,7 +766,7 @@ ${user?.name || 'Candidate'}`;
                                       </button>
                                       <button
                                         onClick={() => handleOpenApplyModal(job)}
-                                        className="btn btn-primary"
+                                        className="btn btn-primary job-action-btn"
                                         style={{ height: '36px', padding: '0 1.25rem', fontSize: '0.875rem', fontWeight: 600 }}
                                       >
                                         Apply Now
