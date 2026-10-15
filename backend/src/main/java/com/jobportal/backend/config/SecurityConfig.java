@@ -1,4 +1,4 @@
-﻿package com.jobportal.backend.config;
+package com.jobportal.backend.config;
 
 import com.jobportal.backend.security.UserDetailsServiceImpl;
 import com.jobportal.backend.security.jwt.JwtAuthenticationFilter;
@@ -59,16 +59,20 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
                 config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
-                config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
                 return config;
             }))
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth ->
                 auth.requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                    .requestMatchers("/h2-console/**").permitAll()
                     .requestMatchers("/api/jobs/**").permitAll()
+                    .requestMatchers("/api/ats/**").permitAll()
+                    .requestMatchers("/api/saved-jobs/check/**").permitAll()
                     .anyRequest().authenticated()
             );
 

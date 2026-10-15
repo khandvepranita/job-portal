@@ -1,12 +1,13 @@
-@REM ----------------------------------------------------------------------------
-@REM Maven Start Up Batch script
-@REM ----------------------------------------------------------------------------
 @echo off
 setlocal
-set MAVEN_PROJECTBASEDIR=%~dp0
-if not "%MAVEN_PROJECTBASEDIR%"=="" set MAVEN_PROJECTBASEDIR=%MAVEN_PROJECTBASEDIR:~0,-1%
-if exist "%MAVEN_PROJECTBASEDIR%\.mvn\wrapper\maven-wrapper.jar" (
-    goto run
+if exist "C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot" (
+    set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot"
 )
-:run
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+
+if exist "%USERPROFILE%\.maven\apache-maven-3.9.6\bin\mvn.cmd" (
+    call "%USERPROFILE%\.maven\apache-maven-3.9.6\bin\mvn.cmd" %*
+    exit /b %ERRORLEVEL%
+)
+
 mvn %*

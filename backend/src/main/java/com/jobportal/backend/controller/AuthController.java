@@ -1,7 +1,9 @@
 package com.jobportal.backend.controller;
 
+import com.jobportal.backend.dto.request.ForgotPasswordRequest;
 import com.jobportal.backend.dto.request.LoginRequest;
 import com.jobportal.backend.dto.request.RegisterRequest;
+import com.jobportal.backend.dto.request.ResetPasswordRequest;
 import com.jobportal.backend.dto.response.AuthResponse;
 import com.jobportal.backend.dto.response.MessageResponse;
 import com.jobportal.backend.service.AuthService;
@@ -16,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "Login, Register, HttpOnly Cookies & Logout APIs")
+@Tag(name = "Authentication", description = "Login, Register, HttpOnly Cookies, Logout, and Password Recovery APIs")
 public class AuthController {
 
     @Autowired
@@ -37,6 +39,20 @@ public class AuthController {
     @Operation(summary = "Register new user (ADMIN, MANAGER, EMPLOYEE, USER)")
     public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
         AuthResponse response = authService.registerUser(registerRequest);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Initiate password recovery by sending reset token/email")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        MessageResponse response = authService.initiatePasswordReset(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Complete password recovery using token and new password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        MessageResponse response = authService.completePasswordReset(request);
         return ResponseEntity.ok(response);
     }
 
